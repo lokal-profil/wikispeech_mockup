@@ -3,15 +3,19 @@ base: docker-registry.wikimedia.org/python3-build-buster
 
 variants:
   build:
-    copies: [local]
+    copies: [ local ]
     apt:
       packages: [ python3-setuptools, ca-certificates, opus-tools ]
     python:
         version: python3
         requirements: [ requirements.txt ]
   test:
-    includes: [build]
-    entrypoint: [build_and_test.sh]
+    python:
+      requirements: [ requirements-dev.txt ]
+    runs:
+      insecurely: true
+    includes: [ build ]
+    entrypoint: [ nosetests, wikispeech_server ]
   production:
-    includes: [build]
-    entrypoint: [python3, bin/wikispeech]
+    includes: [ build ]
+    entrypoint: [ python3, bin/wikispeech ]
