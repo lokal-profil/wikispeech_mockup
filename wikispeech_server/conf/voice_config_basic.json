@@ -1,0 +1,24 @@
+{
+    "textprocessor_configs": [
+	{
+            "name":"basic_en",
+            "lang":"en",
+            "components":[
+		{
+                    "module":"tokeniser",
+                    "call":"tokenise"
+		}
+            ]
+	}
+    ],
+    
+    "voice_configs": [
+	{
+            "lang":"en",
+            "name":"cmu-slt-flite",
+            "engine":"flite",
+            "adapter":"adapters.flite_adapter",
+            "flite_voice":"slt"
+	}
+    ]
+}

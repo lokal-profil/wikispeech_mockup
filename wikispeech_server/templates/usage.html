@@ -1,0 +1,85 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Wikispeech usage</title>
+</head>
+
+<body>
+<h1>Wikispeech usage</h1>
+
+USAGE: /?lang=LANG&input=TEXT
+<br>
+<a href='{{ server }}options'>Wikispeech parameters (json)</a>
+<br>
+
+
+<br>
+Supported languages are: {{ languages }}
+<p/>
+<b>EXAMPLES</b><br/>
+US English: <a href='{{ server }}?lang=en&input=A+test'>{{ server }}?lang=en&input=A test</a><br/>
+Swedish: <a href='{{ server }}?lang=sv&input=Vi%20testar%20talsyntes'>{{ server }}?lang=sv&input=Vi%20testar%20talsyntes</a><br/>
+Arabic: <a href='{{ server }}?lang=ar&input=السويد'>{{ server }}?lang=ar&input=السويد</a><br/>
+Basque: <a href='{{ server }}?lang=eu&input=Hau%20proba%20bat%20da'>{{ server }}?lang=eu&input=Hau%20proba%20bat%20da</a> (only works if an AhoTTS server is running)
+
+<hr>
+Other things to try:
+<br>
+<a href='{{ server }}languages'>{{ server }}languages</a>
+
+<hr>
+<a href='{{ server }}textprocessing'>Textprocessing parameters (json)</a>
+<br>
+<a href='{{ server }}textprocessing/languages'>{{ server }}textprocessing/languages</a>
+<br>
+<a href='{{ server }}textprocessing/textprocessors'>{{ server }}textprocessing/textprocessors</a>
+<br>
+<a href='{{ server }}textprocessing/textprocessors/en'>{{ server }}textprocessing/textprocessors/en</a>
+
+<hr>
+<br>
+<a href='{{ server }}synthesis'>Synthesis parameters (json)</a>
+<br>
+<a href='{{ server }}synthesis/languages'>{{ server }}synthesis/languages</a>
+<br>
+<a href='{{ server }}synthesis/voices'>{{ server }}synthesis/voices</a>
+<br>
+<a href='{{ server }}synthesis/voices/en'>{{ server }}synthesis/voices/en</a>
+
+<hr>
+Textprocessing examples:
+<br>
+<a href='{{ server }}textprocessing/?lang=en&input=A+test'>{{ server }}textprocessing/?lang=en&input=A test</a>
+<br>
+<a href='{{ server }}textprocessing/?lang=sv&input=Vi+testar+talsyntes'>{{ server }}textprocessing/?lang=sv&input=Vi testar talsyntes</a>
+<br>
+<a href='{{ server }}textprocessing/?lang=eu&input=Hau+proba+bat+da'>{{ server }}textprocessing/?lang=eu&input=Hau proba bat da</a>
+
+<p/>
+Tokenisation example:
+<br>
+<a href='{{ server }}textprocessing/?lang=en&input=A+test&textprocessor=basic_en&process=tokenise'>{{ server }}textprocessing/?lang=en&input=A test&textprocessor=basic_en&process=tokenise</a>
+
+<p/>
+Basic synthesis example:
+<br>
+<a href='{{ server }}?lang=en&input=A+test&textprocessor=basic_en&voice=cmu-slt-flite'>{{ server }}?lang=en&input=A+test&textprocessor=basic_en&voice=cmu-slt-flite</a>
+
+<hr>
+Other tests (experimental):
+<br>
+<a href='{{ server }}test.html'>{{ server }}test.html</a>
+<br>
+<a href='{{ server }}workflow_demo/test.html'>{{ server }}workflow_demo/test/html</a>
+
+
+
+<address></address>
+
+<p/>
+<hr>
+<a href="/version">Wikispeech version info</a><br/>
+Server/URL: <a href={{ server }}>{{ server }}</a> <br/>
+<!-- hhmts start -->Last modified: Fri Nov 17 16:23:15 GMT 2017 <!-- hhmts end -->
+</body> </html>

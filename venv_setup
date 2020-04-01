@@ -1,0 +1,28 @@
+#!/bin/sh
+
+VENVDIR=$1
+#VENVDIR=/media/bigdisk/ws_venv
+
+python3 -m venv $VENVDIR
+cd $VENVDIR
+source ./bin/activate
+
+mkdir -p git
+cd git
+
+#First time:
+#git clone https://github.com/stts-se/wikispeech_mockup.git
+
+
+cd wikispeech_mockup
+git pull
+mkdir -p wikispeech_server/tmp
+
+
+pip3 install -r requirements.txt
+
+#should now work (except lexicon and marytts servers may need to be configured and/or started):
+bin/wikispeech
+
+#To quit venv:
+#deactivate

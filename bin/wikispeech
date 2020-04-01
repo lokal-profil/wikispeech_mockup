@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+
+import sys, traceback
+sys.path.insert(0,".")
+import wikispeech_server.wikispeech as ws
+import wikispeech_server.config as config
+
+
+ws.log.log_level = config.config.get("Server","log_level")
+
+#HB 171127 load calls moved here from wikispeech_server/wikispeech.py
+print("Loading textprocessors and voices")
+for tp_config in ws.textprocessor_configs:
+    if tp_config.get("disabled") == True:
+        print("Didn't load %s, disabled in voice_config.py" % tp_config.get("name"))
+    else:
+        try:
+            ws.loadTextprocessor(tp_config)
+        except:
+            print("ERROR: loadTextprocessor %s:\n%s\n%s" % (tp_config.get("name"), sys.exc_info()[0], sys.exc_info()[1]) )
+            traceback.print_tb(sys.exc_info()[2])
+            
+            if config.config.getboolean("Tests","quit_on_error"):
+                print("Exiting because of test error and Tests:quit_on_error is set to True")
+                sys.exit(1)
+            else:
+                print("Continuing anyway because Tests:quit_on_error is set to False")
+
+
+for voice_config in ws.voice_configs:
+    # Skip ahotts if it's not defined in user config
+    if voice_config.get("engine") == "ahotts" and not config.config.get("Services", "ahotts_server_ip", fallback = None):
+        ws.log.info("Skipping voice %s" % voice_config.get("name"))
+    elif voice_config.get("disabled") == True:
+        print("Didn't load %s, disabled in voice_config.py" % voice_config.get("name"))
+    else:
+        try:
+            ws.loadVoice(voice_config)
+        except:
+            print("ERROR: loadVoice %s:\n%s\n%s" % (voice_config.get("name"), sys.exc_info()[0], sys.exc_info()[1]) )
+            traceback.print_tb(sys.exc_info()[2])
+            
+            if config.config.getboolean("Tests","quit_on_error"):
+                print("Exiting because of test error and Tests:quit_on_error is set to True")
+                sys.exit(1)
+            else:
+                print("Continuing anyway because Tests:quit_on_error is set to False")
+            
+print("Done loading textprocessors and voices")
+
+
+try:
+    run_tests = config.config.getboolean("Tests","run_startup_tests")
+except:
+    run_tests = False
+    
+if run_tests:
+    print("run_startup_tests set to True.\nRUNNING TESTS...")
+
+    try:
+        ws.test_config()        
+        ws.test_lexicon_client()
+        ws.test_textproc()
+        ws.test_wikispeech()
+
+        #These tests are run directly on import. TODO change to normal method invocation 
+        import wikispeech_server.test_api
+        import wikispeech_server.test_voice_configs
+
+        #These tests use the unittest module. Import all tests and then run unittest.main(exit=False). exit=False is needed otherwise unittest will do SystemExit even after success
+        from wikispeech_server.test_textprocessor import *
+        from wikispeech_server.test_voice import *
+        from wikispeech_server.adapters.test_marytts_adapter import *
+        from wikispeech_server.adapters.test_lexicon_client import *
+        from wikispeech_server.adapters.test_mapper_client import *
+
+        #HB Before calling unittest.main, remove command line parameters (config file) otherwise unittest will try and fail to load it..
+        del sys.argv[1:]
+
+        unittest.main(exit=False, failfast=True, warnings="ignore")
+
+        #Unittest somehow overrides log_level? It needs to be reset here
+        #anyway, otherwise nothing is printed..
+        ws.log.log_level = config.config.get("Server","log_level")
+        ws.log.info("ALL SELF-TESTS RUN SUCCESSFULLY")
+
+        
+    except:
+        print("Test error:\n%s\n%s" % (sys.exc_info()[0], sys.exc_info()[1]) )
+        traceback.print_tb(sys.exc_info()[2])
+            
+        if config.config.getboolean("Tests","quit_on_error"):
+            print("Exiting because of test error and Tests:quit_on_error is set to True")
+            sys.exit(1)
+        else:
+            print("Starting anyway because Tests:quit_on_error is set to False")
+
+
+        
+ws.log.info("Loaded textprocessors:")
+info = []
+for tp in ws.textprocessors:
+    if tp.isDefault():
+        default = "default"
+    else:
+        default = ""
+    if "config_file" in tp.config:
+        config_file = tp.config["config_file"]
+    else:
+        config_file = "wikispeech_server/voice_config.py"
+        
+    info.append("%-4s\t%-20s\t%-8s\t%-20s" % (tp.lang, tp.name, default, config_file))
+
+ws.log.info("\n%-4s\t%-20s\t%-8s\t%-20s\n%s\n" % ("Lang", "Name", "Default", "Config file", "\n".join(info)))
+
+ws.log.info("Loaded textprocessors for languages: %s" % ws.textprocSupportedLanguages())
+
+ws.log.info("Loaded voices:")
+info = []
+for v in ws.voices:
+    if v.isDefault():
+        default = "default"
+    else:
+        default = ""
+    if "config_file" in v.config:
+        config_file = v.config["config_file"]
+    else:
+        config_file = "wikispeech_server/voice_config.py"
+    info.append("%-4s\t%-20s\t%-8s\t%-20s" % (v.lang, v.name, default, config_file))
+
+ws.log.info("\n%-4s\t%-20s\t%-8s\t%-20s\n%s\n" % ("Lang", "Name", "Default", "Config file", "\n".join(info)))
+
+ws.log.info("Loaded voices for languages: %s" % ws.synthesisSupportedLanguages())
+
+ws.log.info("Supported languages: %s" % ws.getSupportedLanguages())
+
+port_nr = config.config.getint("Server","port")
+
+
+DEBUG_MODE = False
+if config.config.has_option("Server","debug_mode"):
+    DEBUG_MODE = config.config.getboolean("Server", "debug_mode")
+
+
+ws.log.info("port_nr set to %d" % port_nr)    
+ws.log.info("DEBUG_MODE set to %s" % DEBUG_MODE)
+
+ws.log.info("The wikispeech server can be accessed at http://localhost:%s" % port_nr)
+print("The wikispeech server can be accessed at http://localhost:%s\n(The following line comes from the flask server, ignore it..)" % port_nr)
+
+
+ws.app.run(host='0.0.0.0', port=port_nr, debug=DEBUG_MODE, threaded=True) # OPEN FOR EXTERNAL CALLS
+#ws.app.run(port=port_nr, debug=DEBUG_MODE, threaded=True) # ONLY OPEN FOR LOCALHOST
+
+
+

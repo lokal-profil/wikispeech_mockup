@@ -1,5 +1,43 @@
 
 
+
+
+lexicon_name = "wikispeech_testdb:enu";
+wloc = window.location;
+ws_host = wloc.protocol + "//" + wloc.hostname + ":" + wloc.port;
+console.log(ws_host);
+
+function getLexiconList() {
+    var params = {};
+    $.get(
+	ws_host+'lexserver/lexicon/list',
+        params,
+        function(response) {
+	    console.log(response);
+	    lexicon_selector = document.getElementById("lexicon_selector");
+	    for (var i = 0, len = response.length; i < len; i++) {
+		var lexicon = response[i];
+		console.log(lexicon);
+		var name = lexicon.name;
+		console.log(name);
+		var option = document.createElement("option");
+		option.setAttribute("value", name);
+		option.text = name;
+		lexicon_selector.appendChild(option);
+		if ( name == lexicon_name ) {
+		    option.setAttribute("selected","true");		    
+		}
+	    }
+	}
+    )
+
+}
+
+function setLexicon(new_lexicon_name) {
+    lexicon_name = new_lexicon_name;
+    console.log("New lexicon name: "+lexicon_name);
+}
+
 /* Lexicon table TODO not on click of header*/
 function setupLexiconTable() {
     $("#words_table tbody tr").click(function(){
@@ -10,12 +48,14 @@ function setupLexiconTable() {
 	//alert(value);
 	//$("#selected_trans").html(trans);
 
+	console.log("setupLexiconTable calling displaySelected")
 	displaySelected(this);
     });
 }
 
 //make sure that the lexicon table is setup after loading words
 $( document ).ajaxComplete(function( event, xhr, settings ) {
+    console.log("ajaxComplete calling setupLexiconTable")
     setupLexiconTable();
 });
 
@@ -44,19 +84,28 @@ $("#ssml_transcription_div").on('input', function(){
 
 $("#ssml_transcription_input").on('input', function(){
 
+    //TODO
+    //THIS WHOLE THING DOESN'T WORK
+
+    
     var orth = $('#selected_word').text();
 
-    console.log(this);
-    console.log(this.value);
-    console.log(this.innerText);
+    var ssml_trans = this.value;
+    //console.log(this);
+    //console.log("ssml_transcription_input.value before validation: "+this.value);
+    console.log("ssml_transcription_input.value before validation: "+ssml_trans);
+    //console.log(this.innerText);
 
     validateTranscription(this);
-    
+
+
     // store current positions in variables
     var start = this.selectionStart,
         end = this.selectionEnd;
 
-    this.value = makeSSMLReplacementString(this.value, orth);
+    console.log("ssml_transcription_input.value after validation: "+ssml_trans);
+    //this.value = makeSSMLReplacementString(this.value, orth);
+    makeSSMLReplacementString();
 
     // restore from variables...
     this.setSelectionRange(start, end);
@@ -85,29 +134,24 @@ function getCaretPosition(element) {
 
 
 
-function makeSSMLReplacementString(ssml, orth) {
-    //var orth = "dummy";
+function makeSSMLReplacementString() {
 
-    //var ssml = $('#ssml_transcription').html();
-    //var ssml = $(this).html();
-    //var ssml = container.html();
-    console.log(ssml);
-    var trans_string = ssml.replace(/^.*<p><phoneme .+>(.+)<\/phoneme><\/p>.*$/,"$1");
+    var trans_string = $("#ssml_transcription_input").val();
+    var orth = $('#selected_word').text();
+
+
     trans_string = trans_string.replace(/"/g, "&quot;");
     trans_string = trans_string.replace(/&nbsp;/g, " ");
 
+    console.log("orth: "+orth);
+    console.log("trans_string: "+trans_string);
 
-    console.log(trans_string);
-    var new_ssml = ssml.replace(/ph="[^"]+"/, "ph=\""+trans_string+"\""); 
-    var new_ssml = new_ssml.replace(/>[^<]+<\/phoneme/, ">"+trans_string+"<\/phoneme"); 
-    console.log(new_ssml);
-        
-    //phoneme_string = "<p><phoneme alphabet=\"x-sampa\" ph=\""+trans_string+"\">"+orth+"</phoneme></p>";
     phoneme_string = "<phoneme alphabet=\"x-sampa\" ph=\""+trans_string+"\">"+orth+"</phoneme>";
     console.log(phoneme_string);
+
     $("#ssml_replacement").text(phoneme_string);
 
-    return new_ssml;
+    //return new_ssml;
 }
 
 function displaySelected(row) {
@@ -157,15 +201,15 @@ function displaySelected(row) {
     if ( orth in global_entries ) {
 	entry_list = global_entries[orth];
 	console.log(entry_list);
-
-	displayInSimpleEditor(entry_list,selected_table, orth);
+	var lang = document.getElementById("language_selector").value;
+	displayInSimpleEditor(entry_list,selected_table, orth, lang);
 	    
     }
 
 }
 
 
-function displayInSimpleEditor(entry_list, selected_table, orth) {
+function displayInSimpleEditor(entry_list, selected_table, orth, lang) {
 
 	for (i=0; i<entry_list.length; i++) {
 	    var entry = entry_list[i];
@@ -183,13 +227,21 @@ function displayInSimpleEditor(entry_list, selected_table, orth) {
 
 	    trans.setAttribute("id","selected_trans_"+i);
 	    trans.setAttribute("class", "ssml");
-	    //TODO remove hardcoded language
-	    trans.setAttribute("lang", "sv");
+
+	    var xmllang = lang;
+	    if ( lang == "en" ) {
+		xmllang = "en-US";
+	    }
+	    if ( lang == "nb" ) {
+		xmllang = "no";
+	    }
+
+	    trans.setAttribute("lang", xmllang);
 	    trans.setAttribute("contenteditable",true);
 	    trans.setAttribute("style", "background-color:lightgreen;");
 	    
 	    trans.innerHTML = entry["transcriptions"][0]["strn"];
-	    trans.setAttribute("onkeyup","validateTranscription($('#selected_trans_"+i+"')[0]);");	    
+	    trans.setAttribute("onkeyup","validateTranscription($('#selected_trans_"+i+"')[0], '"+lang+"');");	    
 	    row.appendChild(trans)
 	    
 	    //LISTEN BUTTON
@@ -197,14 +249,14 @@ function displayInSimpleEditor(entry_list, selected_table, orth) {
 	    var listen_button = document.createElement("input");
 	    listen_button.setAttribute("type","button");
 	    listen_button.setAttribute("value","listen");
-	    listen_button.setAttribute("onclick", "playTranscription($('#selected_trans_"+i+"')[0]);");
+	    listen_button.setAttribute("onclick", "playTranscription($('#selected_trans_"+i+"')[0], '"+lang+"');");
 	    listen.appendChild(listen_button);
 	    row.appendChild(listen)
 
 	    //ENTRY LANG
-	    var lang = document.createElement("td");
-	    lang.innerHTML = entry["language"];
-	    row.appendChild(lang)
+	    var langE = document.createElement("td");
+	    langE.innerHTML = entry["language"];
+	    row.appendChild(langE)
 
 	    //ENTRY POS
 	    var pos = document.createElement("td");
@@ -228,11 +280,16 @@ function displayInSimpleEditor(entry_list, selected_table, orth) {
 	    
 	    console.log("entry['preferred']: "+entry["preferred"]);
 	    pref.checked = entry["preferred"];
-
-	    
 	    pref_td.appendChild(pref)
 	    row.appendChild(pref_td)
 
+	    
+	    //ENTRY TAG
+	    var tag = document.createElement("td");
+	    tag.id = "tag_"+i;
+	    tag.innerText = entry["tag"];
+	    row.appendChild(tag)
+	    
 
 
 	    //that's it
@@ -258,16 +315,28 @@ function updateLexicon(orth) {
 	    console.log("UPDATING PREF: "+entry.preferred+" -> "+newpref);
 	    entry.preferred = newpref;
 	}
+	var newtag = document.getElementById("tag_"+i).innerText;
+	if (newtag !== entry.tag) {
+	    console.log("UPDATING TAG: "+entry.tag+" -> "+newtag);
+	    entry.tag = newtag;
+	}
 	updateEntry(entry);
     }
 }
 
 
-function makeSSMLTranscription(transcription) {
+function makeSSMLTranscription(transcription, lang) {
     var speak = document.createElement("speak");
     
-    //NOTE hardcoded language
-    speak.setAttribute("xml:lang", "sv");
+    var xmllang = lang;
+    if ( lang == "en" ) {
+	xmllang = "en-US";
+    }
+    if ( lang == "nb" ) {
+	xmllang = "no";
+    }
+
+    speak.setAttribute("xml:lang", xmllang);
 	
     speak.setAttribute("version","1.0");
     speak.setAttribute("xmlns", "http://www.w3.org/2001/10/synthesis");
@@ -283,14 +352,22 @@ function makeSSMLTranscription(transcription) {
 }
 
 /* Step 1 - send html/text/ssml to wikispeech for textprocessing */
-/* Called from Imput tab "tokenise" button */
+/* Called from Input tab "start" button */
 /* TODO remove hardcoded language */
-function tokeniseHtmlText() {
+function tokeniseHtmlText(lang) {
     var html_editor = document.getElementById('html_editor');
     //console.log(html_editor);
     var html = html_editor.innerHTML;
 
-    var ssml_header = '<?xml version="1.0" encoding="UTF-8" ?>\n<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"\n  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n  xsi:schemaLocation="http://www.w3.org/2001/10/synthesis http://www.w3.org/TR/speech-synthesis/synthesis.xsd"\nxml:lang="sv">\n';
+    var xmllang = lang;
+    if ( lang == "en" ) {
+	xmllang = "en_US";
+    }
+    if ( lang == "nb" ) {
+	xmllang = "no";
+    }
+    
+    var ssml_header = '<?xml version="1.0" encoding="UTF-8" ?>\n<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"\n  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n  xsi:schemaLocation="http://www.w3.org/2001/10/synthesis http://www.w3.org/TR/speech-synthesis/synthesis.xsd"\nxml:lang="'+xmllang+'">\n';
     var ssml_footer = "</speak>";
 
     var ssml_content = filterToSSML(html);
@@ -300,14 +377,13 @@ function tokeniseHtmlText() {
     console.log("Tokenising:\n"+ssml);
 
     var params = {
-	"lang": "sv",
+	"lang": lang,
 	"input_type": "ssml",
 	"input": ssml
     }
     
     $.get(
-        //'http://localhost/wikispeech/textprocessing',
-        ws_host+'/textprocessing/',
+        ws_host+'textprocessing/',
         params,
         function(response) {
 	    console.log(response);
@@ -315,10 +391,11 @@ function tokeniseHtmlText() {
 	    if (response.hasOwnProperty("paragraphs")) {
 		//console.log("Found utt");
 		////addSentencesToSynthesisTab(data.sentences);
-		addHtmlSentencesToSynthesisTab();
+		addHtmlSentencesToSynthesisTab(lang);
 		
 		var data = getSentenceAndTokens(response);
-		addWordsToLexiconTab(data.words);
+		
+		addWordsToLexiconTab(data.words, lang);
 
 	    } else {
 		console.log("ERROR: response is not an utt");
@@ -403,7 +480,7 @@ function getTranscription(token) {
 
 /* Step 2, add sentences in synthesis tab */
 /* TODO Is this responsive enough? */
-function addHtmlSentencesToSynthesisTab() {
+function addHtmlSentencesToSynthesisTab(lang) {
     var html_editor = document.getElementById('html_editor');
     //console.log(html_editor);
 
@@ -417,17 +494,19 @@ function addHtmlSentencesToSynthesisTab() {
     text_chunks = html_editor.getElementsByTagName("ssml:s");
     //If there are no sentences, use p tags instead
     if ( text_chunks.length == 0 ) {
+	console.log("Found no ssml:s elements");
 	text_chunks = html_editor.getElementsByTagName("p");
 	//If there are no p tags, use entire text (?)
 	if ( text_chunks.length == 0 ) {
+	    console.log("Found no p elements, using entire text");
 	    text_chunks = [html_editor.innerHTML];
 	}
 	
     }
 
 
-    //console.log("TEXT CHUNKS: ");
-    //console.log(text_chunks);
+    console.log("TEXT CHUNKS: ");
+    console.log(text_chunks);
 
 
     for ( var i=0; i<text_chunks.length; i++ ) {
@@ -439,8 +518,16 @@ function addHtmlSentencesToSynthesisTab() {
 	var p = document.createElement("p");
 	var speak = document.createElement("speak");
 
-	//NOTE hardcoded language
-	speak.setAttribute("xml:lang", "sv");
+	var xmllang = lang;
+	if ( lang == "en" ) {
+	    xmllang = "en-US";
+	}
+	if ( lang == "nb" ) {
+	    xmllang = "no";
+	}
+	    
+
+	speak.setAttribute("xml:lang", xmllang);
 	
 	speak.setAttribute("version","1.0");
 	speak.setAttribute("xmlns", "http://www.w3.org/2001/10/synthesis");
@@ -464,8 +551,8 @@ function addHtmlSentencesToSynthesisTab() {
 	var id = "sentence_nr_"+i;
 	p.setAttribute("id",id);
 
-	//TODO hardcoded language
-	var lang = "sv";
+	console.log("addHtmlSentencesToSynthesisTab: LANGUAGE")
+	console.log(lang)
 	p.setAttribute("lang", lang);
    
 	var playButton = document.createElement("input");
@@ -514,7 +601,7 @@ function addSentencesToSynthesisTab(sentences) {
 
 /* Step 3, list words in lexicon tab */
 
-function addWordsToLexiconTab(words) {
+function addWordsToLexiconTab(words, lang) {
     var words_table = document.getElementById("words_table");
     var words_table_tbody = words_table.getElementsByTagName("tbody")[0];
     words_table_tbody.innerHTML = "";
@@ -567,13 +654,20 @@ function addWordsToLexiconTab(words) {
 	    trans.setAttribute("id","trans_"+i);
 	    //trans.setAttribute("style", "display: inline-block; width: 30em;");
 	    trans.setAttribute("class", "ssml");
-	    //TODO remove hardcoded language
-	    trans.setAttribute("lang", "sv");
+
+	    trans.setAttribute("lang", lang);
 
 	    var speak = document.createElement("speak");
 
-	    //NOTE hardcoded language
-	    speak.setAttribute("xml:lang", "sv");
+	    var xmllang = lang;
+	    if ( lang == "en" ) {
+		xmllang = "en-US";
+	    }
+	    else if ( lang == "nb" ) {
+		xmllang = "no";
+	    }
+
+	    speak.setAttribute("xml:lang", xmllang);
 	
 	    speak.setAttribute("version","1.0");
 	    speak.setAttribute("xmlns", "http://www.w3.org/2001/10/synthesis");
@@ -634,16 +728,29 @@ function addWordsToLexiconTab(words) {
     }
     //See if the words are found in lexicon, update table accordingly
     //Better to look up all words first..
-    wordsInLex(words);
+    wordsInLex(words, lang);
 
     
 }
 
 
-function validateTranscription(t) {
+function validateTranscription(t, lang) {
     console.log(t);
-    var trans = t.innerText;
-    console.log(trans);
+
+    //if it's an element
+    var trans = t.innerHTML;
+    //if it's an input field
+    //TODO check instead if it is..
+    if ( trans == "" ) {
+	trans = t.value;
+	//replace all except first ' with % if ssml transcription..
+	trans = trans.replace(/'/g,"%%");
+	trans = trans.replace("%%","'");
+	trans = trans.replace("%%", "%");
+	trans = trans.replace(/%%/g,"");
+    }
+
+    console.log("validateTranscription: trans = "+trans);
     
     var word = "dummy";
     var entry = {
@@ -656,19 +763,37 @@ function validateTranscription(t) {
 	]
     };
 
-    //TODO hardcoded language
+    //TODO fix
+    if ( lang == undefined ) {
+	lang = document.getElementById("language_selector").value;
+    }    
+    console.log("validateTranscription: lang = "+lang);
+    
+    //TODO hardcoded symbolsets
+    if ( lang == "sv" ) {
+	var symbolset = "sv-se_ws-sampa";
+    }
+    else if ( lang == "en" ) {
+	var symbolset = "en-us_ws-sampa";
+    }
+    else if ( lang == "nb" ) {
+	var symbolset = "nb-no_ws-sampa";
+    } else {
+	console.log("WARNING: no symbolset defined for language "+lang);
+	return;
+    }
+    
     var params = {
-	"symbolsetname": "sv-se_ws-sampa",
+	"symbolsetname": symbolset,
 	"entry": JSON.stringify(entry)
     }
 
-    //TODO hardcoded url
+    
     $.get(
-        //'http://localhost/ws_service/validation/validateentry',
-        ws_hostname+'/ws_service/validation/validateentry',
+        ws_host+'lexserver/validation/validateentry',
         params,
         function(response) {
-	    console.log(response);
+	    console.log("validateTranscription: response = "+response);
 	    var container = $('#validation')[0];
 	    container.innerHTML = "";
 
@@ -720,7 +845,7 @@ function displayValidationResult(messages, container, transcription_field) {
 }
 
 
-function playTranscription(t) {
+function playTranscription(t,lang) {
     //var t = $('#'+id)[0];
     console.log(t);
     var trans = t.innerHTML;
@@ -739,49 +864,76 @@ function playTranscription(t) {
 	]
     };
 
-    //TODO hardcoded language
+    console.log("playTranscription: LANGUAGE")
+    console.log(lang)
+
+    //TODO hardcoded symbolsets
+    if ( lang == "sv" ) {
+	var symbolset = "sv-se_ws-sampa";
+    }
+    else if ( lang == "en" ) {
+	var symbolset = "en-us_ws-sampa";
+    }
+    else if ( lang == "nb" ) {
+	var symbolset = "nb-no_ws-sampa";
+    } else {
+	console.log("WARNING: no symbolset defined for language "+lang);
+	return;
+    }
+
     var params = {
-	"symbolsetname": "sv-se_ws-sampa",
+	"symbolsetname": symbolset,
 	"entry": JSON.stringify(entry)
     }
 
 
     console.log(params);
 
-    //TODO hardcoded url
-    $.get(
-        //'http://localhost/ws_service/validation/validateentry',
-        ws_hostname+'/ws_service/validation/validateentry',
-        params,
-        function(response) {
-	    console.log(response);
-	    var validation_container = $('#validation')[0];
-	    validation_container.innerHTML = "";
+    $.ajax(
+	{
+            url: ws_host+'lexserver/validation/validateentry',
+            data: params,
+            success: function(response) {
+		console.log(response);
+		var validation_container = $('#validation')[0];
+		validation_container.innerHTML = "";
 
-	    if ( response["entryValidations"].length == 0 ) {
+		if ( response["entryValidations"].length == 0 ) {
 
-		t.setAttribute("style", "background-color:lightgreen;");
-
-		ssml = makeSSMLTranscription(trans);
-		//Actually play only after validation
-		playSSML(ssml);
+		    t.setAttribute("style", "background-color:lightgreen;");
+		    
+		    //Actually play only after validation
+		    playSSML(trans, lang);
 		
-	    } else {
+		} else {
 
-		displayValidationResult(response["entryValidations"], validation_container, t);
+		    displayValidationResult(response["entryValidations"], validation_container, t);
 		
+		}
+	    },
+	    error: function(xhr) {
+		console.log(xhr);
+		alert("An error occured: " + xhr.status + " " + xhr.statusText + " " + xhr.responseText);
 	    }
 	}
     );
 }
 
-function playSSML(ssml) {
-    clone = ssml.cloneNode(true);
+function playSSML(trans, lang) {
+
+    ssml = makeSSMLTranscription(trans, lang);
+
+    
     container = document.createElement("p");
-    //TODO hardcoded language
-    container.setAttribute("lang", "sv");
+
+    container.setAttribute("lang", lang);
     container.setAttribute("class", "ssml");
-    container.appendChild(clone);
+
+    container.appendChild(ssml);
+
+    console.log("container: ");
+    console.log(container);
+    
     //globals for player
     useOriginalText = false;
     showControls = false;
@@ -794,17 +946,30 @@ function playSSML(ssml) {
 
 /* Searches for one word/re, used in lexicon editor */
 /* TODO Remove hardcoded lexicon name and url*/
-function searchLexicon(search_term) {
+function searchLexicon(search_term, lang) {
     console.log("Searching lexicon for: " + search_term);
 
+    /*
+    if ( lang == "sv" ) {
+	var lexicons = "sv_se_nst_lex:sv-se.nst";
+    } 
+    else if ( lang == "en" ) {
+	var lexicons = "en_am_cmu_lex:en-us.cmu";
+    }
+    else {
+	console.log("WARNING: no lexicon defined for lang "+lang);
+    }
+    */
+    var lexicons = lexicon_name;
+    console.log("Lexicon name: "+lexicons);
+
     var params = {
-	"lexicons": "sv-se.nst",
+	"lexicons": lexicons,
 	"words": search_term
     }
     
     $.get(
-        //'http://localhost/ws_service/lexicon/lookup',
-        ws_hostname+'/ws_service/lexicon/lookup',
+        ws_host+'lexserver/lexicon/lookup',
         params,
         function(response) {
 	    console.log(response);
@@ -822,7 +987,7 @@ function wordInLex(word, div, trans) {
     var unknown_words_container = document.getElementById("unknown_words_container");
 
     var params = {
-	"lexicons": "sv-se.nst",
+	"lexicons": "sv_se_nst_lex:sv-se.nst",
 	"words": word
     }
     
@@ -852,37 +1017,55 @@ function wordInLex(word, div, trans) {
 
 
 
-function wordsInLex(words) {
+function wordsInLex(words, lang) {
     var wordlist = Object.keys(words).sort();
     var words_to_lookup = wordlist.join();
     
     //console.log("Searching lexicon for: " + words);
 
     //TODO hardcoded lexicon
+    /*
+    if ( lang == "sv" ) {
+	var lexicons = "wikispeech_testdb:sv";
+    } 
+    else if ( lang == "en" ) {
+	var lexicons = "wikispeech_testdb:enu";
+    }
+    else if ( lang == "nb" ) {
+	var lexicons = "wikispeech_testdb:nb";
+    }
+    else {
+	console.log("WARNING: no lexicon defined for lang "+lang);
+    }
+    */
+
+    var lexicons = lexicon_name;
+    console.log("Lexicon name: "+lexicons);
+
+
     var params = {
-	"lexicons": "sv-se.nst",
+	"lexicons": lexicons,
 	"pagelength": 2*wordlist.length,
 	"words": words_to_lookup
     }
 
-    //TODO hardcoded url
     $.get(
-        //'http://localhost/ws_service/lexicon/lookup',
-        ws_hostname+'/ws_service/lexicon/lookup',
+        ws_host+'lexserver/lexicon/lookup',
         params,
         function(response) {
 
+	    console.log(response);
 	    //response is a list of entries, first convert it to hash with orth as key
 	    //GLOBAL for later use
 	    global_entries = {};
-	    for (i=1; i<response.length; i += 1) {
+	    for (i=0; i<response.length; i += 1) {
 		var entry = response[i];
 
 		//filter out entries with status:name=delete
 		if ( entry.status.name == "delete" ) {
 		    continue;
 		}
-		
+		console.log("Adding to global_entries: "+entry.strn);
 		if ( entry.strn in global_entries ) {
 		    global_entries[entry.strn].push(entry);
 		} else {
@@ -899,7 +1082,7 @@ function wordsInLex(words) {
 		}
 	    }
 	    
-	    //console.log(response);
+
 	    for (i=0; i<wordlist.length; i += 1) {
 		var word = wordlist[i];
 		if ( word.match(/^[.,?!]+$/) ) {
@@ -945,6 +1128,7 @@ function wordsInLex(words) {
 	    $(row).addClass("selected");
 
 	    //TODO This goes wrong..
+	    console.log("wordsInLex calling displaySelected")
 	    displaySelected(row);
 
 
@@ -987,8 +1171,7 @@ function updateEntry(entry) {
     //console.log(JSON.stringify(params));
     
     $.ajax({
-	//url: 'http://localhost/ws_service/lexicon/updateentry',
-	url: ws_hostname+'/ws_service/lexicon/updateentry?entry='+entry_string,
+	url: ws_host+'lexserver/lexicon/updateentry?entry='+entry_string,
 	//data: params,
 	type: "GET",
 	contentType: "application/json",

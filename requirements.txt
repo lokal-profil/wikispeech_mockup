@@ -1,0 +1,6 @@
+simplejson
+requests
+flask
+flask_cors
+pytz
+tzlocal

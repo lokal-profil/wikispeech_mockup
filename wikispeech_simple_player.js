@@ -2,10 +2,12 @@
 
 
 //Default, if the html does not set ws_host 
-ws_host = "https://morf.se/wikispeech";
+//HB ws_host = "http://localhost:10000";
 
 //Default, if getSupportedLanguages fails
-supported_languages = ["sv"];
+supported_languages = ["en"];
+//getSupportedLanguages();
+
 
 //can be set to false from js if no controls or 'play-along' is wanted
 var useOriginalText = true;
@@ -52,7 +54,8 @@ function addPlayButtonToP() {
 
 function getSupportedLanguages() {
 
-    var url = ws_host+"/languages";
+    //HB 171117 var url = ws_host+"/languages";
+    var url = ws_host+"languages";
     console.log("Getting supported_languages from "+url);
 
     var xhr = new XMLHttpRequest();
@@ -135,7 +138,8 @@ function play(id) {
     console.log(text);
 
 
-    var url = ws_host+"/";
+    //HB 171117 var url = ws_host+"/";
+    var url = ws_host;
     var params = "lang="+lang+"&input_type="+input_type+"&input="+encodeURIComponent(text);
 
     //HB 9/3 testing to switch English voice
@@ -165,10 +169,8 @@ function play(id) {
 	//using video.js or one html5 audio element
 	//var audio = document.getElementById("audio_player");
 	//using regular html5 audio
-	audio.setAttribute("src", response.audio);
 
-
-	if (showControls) {
+	if (showControls) { // will not work properly with showControls set to true
 	    addTimingInfoFromJson(container, response);
 	    connectTimingAndAudio(container,audio);
 	    audio.setAttribute("controls", "true");
@@ -176,8 +178,9 @@ function play(id) {
 	    toggleAudioControls();
 	}
 
+	audio.setAttribute("src", response.audio);	    
 	audio.play();
-	
+	    
     };
 
     xhr.onerror = function() {
